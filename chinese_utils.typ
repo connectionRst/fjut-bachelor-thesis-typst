@@ -105,6 +105,8 @@
   }
 }
 
+#let paperheading = (字号.三号, 字号.四号, 字号.中四, 字号.小四)
+
 // thx hit thesis
 // TODO: type annotation
 #let par-spacing(spacing) = {

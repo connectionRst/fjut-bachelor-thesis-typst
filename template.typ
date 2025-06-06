@@ -9,12 +9,12 @@
 #let imagecounter = counter(figure.where(kind: image))
 #let tablecounter = counter(figure.where(kind: table))
 #let equationcounter = counter(math.equation)
+#let skippedstate = state("skipped", false)
+
 #let appendix() = {
   appendixcounter.update(10)
   chaptercounter.update(0)
-  counter(heading).update(0)
 }
-#let skippedstate = state("skipped", false)
 
 #let chinesenumbering(..nums, location: none, brackets: false) = context {
   let actual_loc = if location == none { here() } else { location }
@@ -286,14 +286,6 @@
             headings.first().body.text
           }
 
-          // [HARDCODED] Handle the first page of Chinese abstract specailly
-          if next_heading == "摘要" and calc.odd(here().page()) {
-            [
-              #next_heading
-              #v(-0.8em)
-              #line(length: 100%)
-            ]
-          }
         } else if partcounter.at(here()).at(0) <= 20 {
           if calc.even(here().page()) {
             [
@@ -307,9 +299,7 @@
               let elems = query(
                 heading.where(level: 1).before(footers.first().location())
               )
-
-              // [HARDCODED] Handle the last page of Chinese abstract specailly
-              let el = if elems.last().body.text == "摘要" or not skippedstate.at(footers.first().location()) {
+              let el = if not skippedstate.at(footers.first().location()) {
                 elems.last()
               } else {
                 elems.at(-1)
@@ -333,21 +323,18 @@
       }]},
     footer: context {
       if skippedstate.at(here()) and calc.even(here().page()) { return }
+      set text(字号.五号)
+      set align(center)
+      // Skip cover, copyright and origin pages
+      let part = partcounter.get().first()
       [
-        #set text(字号.五号)
-        #set align(center)
-        #if query(selector(heading).before(here())).len() < 2 or query(selector(heading).after(here())).len() == 0 {
-          // Skip cover, copyright and origin pages
-        } else {
+        #if part <= 20 {
           let headers = query(selector(heading).before(here()))
-          let part = partcounter.at(headers.last().location()).first()
-          [
-            #if part < 20 {
-              numbering("I", counter(page).at(here()).first())
-            } else {
-              str(counter(page).at(here()).first())
-            }
-          ]
+          if part < 20 {
+            numbering("I", counter(page).at(here()).first())
+          } else {
+            str(counter(page).at(here()).first())
+          }
         }
         #label("__footer__")
       ]
@@ -384,33 +371,13 @@
   set par(spacing: linespacing)
   show raw: set text(font: 字体.代码)
 
-  show heading: it => [
+  show heading: it => {
     // Cancel indentation for headings
-    #set par(first-line-indent: 0em)
+    set par(first-line-indent: 0em)
 
-    #let sizedheading(it, size) = [
-      #set text(size)
-      #v(2em)
-      #if it.numbering != none {
-        strong(counter(heading).display())
-        h(0.5em)
-      }
-      #strong(it.body)
-      #v(1em)
-    ]
-
-    #if it.level == 1 {
-      if not it.body.text in ("Abstract", "学位论文使用授权说明", "版权声明")  {
+    if it.level == 1 {
+      if not it.body.text in ("Abstract")  {
         smartpagebreak()
-      }
-      context {
-        if it.body.text == "摘要" {
-          partcounter.update(10)
-          counter(page).update(1)
-        } else if it.numbering != none and partcounter.at(here()).first() < 20 {
-          partcounter.update(20)
-          counter(page).update(1)
-        }
       }
       if it.numbering != none {
         chaptercounter.step()
@@ -420,19 +387,17 @@
       tablecounter.update(())
       rawcounter.update(())
       equationcounter.update(())
-
-      set align(center)
-      sizedheading(it, 字号.三号)
-    } else {
-      if it.level == 2 {
-        sizedheading(it, 字号.四号)
-      } else if it.level == 3 {
-        sizedheading(it, 字号.中四)
-      } else {
-        sizedheading(it, 字号.小四)
-      }
     }
-  ]
+    set align(if it.level == 1 {center} else {left})
+    set text(paperheading.at(if it.level > 4 {3} else {it.level - 1}))
+    v(2em)
+    if it.numbering != none {
+      strong(counter(heading).display())
+      h(0.5em)
+    }
+    strong(it.body)
+    v(1em)
+  }
 
   show figure: it => [
     #set align(center)
@@ -627,6 +592,8 @@
   smartpagebreak()
 
   // Chinese abstract
+  partcounter.update(10)
+  counter(page).update(1)
   {
     heading(numbering: none, outlined: false, "摘要")
     cabstract
@@ -654,7 +621,14 @@
         Directed by #esupervisor
       ]
     }
-    heading(numbering: none, outlined: false, "Abstract")
+    {  // TODO: non-pagebreak heading()
+      v(2em)
+      align(center,
+      strong(
+      text(paperheading.at(0),
+      [Abstract])))
+      v(1em)
+    }
     eabstract
     v(1fr)
     set par(first-line-indent: 0em)
@@ -683,8 +657,12 @@
   if listofcode {
     listoffigures(title: "代码", kind: "code")
   }
+  smartpagebreak()  // footer hack
+
 
   // The article
+  partcounter.update(20)
+  counter(page).update(1)
   set align(left + top)
   // par(justify: true, first-line-indent: 2em, leading: linespacing)[
   //   #doc
