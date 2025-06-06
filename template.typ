@@ -528,7 +528,6 @@
   ]
 
   // Cover page
-
   if blind {
     set align(center + top)
     text(字号.初号)[#strong(cheader)]
@@ -612,51 +611,59 @@
 
   smartpagebreak()
 
-  // Copyright
   set align(left + top)
   set text(字号.小四)
-  heading(numbering: none, outlined: false, "版权声明")
-  par(justify: true, first-line-indent: 2em, leading: linespacing)[
-    任何收存和保管本论文各种版本的单位和个人，未经本论文作者同意，不得将本论文转借他人，亦不得随意复制、抄录、拍照或以任何方式传播。否则，引起有碍作者著作权之问题，将可能承担法律责任。
-  ]
+  set par(justify: true, first-line-indent: 2em, leading: linespacing)
+
+  // Copyright
+  {
+    heading(numbering: none, outlined: false, "版权声明")
+    par(justify: true, first-line-indent: 2em, leading: linespacing)[
+      任何收存和保管本论文各种版本的单位和个人，未经本论文作者同意，不得将本论文转借他人，亦不得随意复制、抄录、拍照或以任何方式传播。否则，引起有碍作者著作权之问题，将可能承担法律责任。
+    ]
+  }
+  
 
   smartpagebreak()
 
   // Chinese abstract
-  set par(justify: true, first-line-indent: 2em, leading: linespacing)
-  heading(numbering: none, outlined: false, "摘要")
-  cabstract
-  v(1fr)
-  set par(first-line-indent: 0em)
-  text[*关键词：*]
-  ckeywords.join("，")
-  v(2em)
-  set par(first-line-indent: 2em)
+  {
+    heading(numbering: none, outlined: false, "摘要")
+    cabstract
+    v(1fr)
+    set par(first-line-indent: 0em)
+    text[*关键词：*]
+    ckeywords.join("，")
+    v(2em)
+  }
+  
   
 
   smartpagebreak()
 
   // English abstract
-  [
-    #set text(字号.小二)
-    #set align(center)
-    #strong(etitle)
-  ]
-  if not blind {
-    [
-      #set align(center)
-      #eauthor \(#emajor\) \
-      Directed by #esupervisor
-    ]
+  {
+    align(center,
+      strong(
+        text(字号.小二,
+    etitle)))
+    if not blind {
+      [
+        #set align(center)
+        #eauthor \(#emajor\) \
+        Directed by #esupervisor
+      ]
+    }
+    heading(numbering: none, outlined: false, "Abstract")
+    eabstract
+    v(1fr)
+    set par(first-line-indent: 0em)
+    [*KEYWORDS:*]
+    h(0.5em, weak: true)
+    ekeywords.join(", ")
+    v(2em)
   }
-  heading(numbering: none, outlined: false, "Abstract")
-  eabstract
-  v(1fr)
-  set par(first-line-indent: 0em)
-  [*KEYWORDS:*]
-  h(0.5em, weak: true)
-  ekeywords.join(", ")
-  v(2em)
+  
   
   // Table of contents
   chineseoutline(
@@ -677,6 +684,7 @@
     listoffigures(title: "代码", kind: "code")
   }
 
+  // The article
   set align(left + top)
   // par(justify: true, first-line-indent: 2em, leading: linespacing)[
   //   #doc
@@ -686,6 +694,7 @@
 
   smartpagebreak()
 
+  // acknow
   if not blind {
     heading(numbering: none, "致谢")
     acknowledgements
