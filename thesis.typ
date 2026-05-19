@@ -24,9 +24,9 @@
   linespacing: 20pt,
   outlinedepth: 3,
   blind: false,
-  listofimage: true,
-  listoftable: true,
-  listofcode: true,
+  listofimage: false,
+  listoftable: false,
+  listofcode: false,
   alwaysstartodd: true,
   doc,
 )
@@ -465,7 +465,7 @@ $ lim_x =
 
 在 @theory1 中，我们回顾了 @intro 中的公式。下面，我们来推导一些新的公式：
 
-#lorem(1000)
+#lorem(5)
 
 = 展望
 
@@ -566,11 +566,11 @@ $ vec(overline(underbracket(underline(1 + 2) + overbrace(3 + dots.c + 10, "large
 
 == Typst 的开发者 <developers>
 
-#lorem(1000)
+#lorem(5)
 
 = 关于 PKUTHSS <pkuthss>
 
-#lorem(1000)
+#lorem(5)
 
 = 更新日志 <changelog>
 

@@ -15,6 +15,7 @@
   counter(heading).update(0)
 }
 #let skippedstate = state("skipped", false)
+#let artstartedstate = state("article_started", false)
 
 #let chinesenumbering(..nums, location: none, brackets: false) = context {
   let actual_loc = if location == none { here() } else { location }
@@ -274,63 +275,34 @@
 
   set page("a4",
     header: context {
-      if skippedstate.at(here()) and calc.even(here().page()) { return }
-      [
-        #set text(字号.五号)
-        #set align(center)
-        #if partcounter.at(here()).at(0) < 10 {
-          let headings = query(selector(heading).after(here()))
-          let next_heading = if headings == () {
-            ()
-          } else {
-            headings.first().body.text
-          }
-
-          // [HARDCODED] Handle the first page of Chinese abstract specailly
-          if next_heading == "摘要" and calc.odd(here().page()) {
+      set text(字号.五号, font: 字体.宋体)
+      set align(center)
+      let firstpart = query(heading.where(outlined: true, level: 1)).first().location().page()
+      // if here().page() >= firstpart {
+      if partcounter.get().first() == 20 {  // <10 is cover--contents, 10~20 is the article, 30 is appendix (unused)
+        // even 才是偶数
+        let partpage = here().page() - firstpart + 1
+        if calc.even(partpage) or partpage == 1 {
+          artstartedstate.update(true)
+          [
+            #align(center, cheader)
+            #v(-0.8em)
+            #line(length: 100%)
+          ]
+        } else {
+          let footers = query(selector(<__footer__>).after(here()))
+          if footers != () {
             [
-              #next_heading
-              #v(-0.8em)
+              #cauthor
+              #h(0.5em)
+              #ctitle
+              // #v(-0.8em)
               #line(length: 100%)
             ]
           }
-        } else if partcounter.at(here()).at(0) <= 20 {
-          if calc.even(here().page()) {
-            [
-              #align(center, cheader)
-              #v(-0.8em)
-              #line(length: 100%)
-            ]
-          } else {
-            let footers = query(selector(<__footer__>).after(here()))
-            if footers != () {
-              let elems = query(
-                heading.where(level: 1).before(footers.first().location())
-              )
-
-              // [HARDCODED] Handle the last page of Chinese abstract specailly
-              let el = if elems.last().body.text == "摘要" or not skippedstate.at(footers.first().location()) {
-                elems.last()
-              } else {
-                elems.at(-1)
-              }
-              [
-                #let numbering = if el.numbering == chinesenumbering {
-                  chinesenumbering(..counter(heading).at(el.location()), location: el.location())
-                } else if el.numbering != none {
-                  numbering(el.numbering, ..counter(heading).at(el.location()))
-                }
-                #if numbering != none {
-                  numbering
-                  h(0.5em)
-                }
-                #el.body
-                #v(-0.8em)
-                #line(length: 100%)
-              ]
-            }
-          }
-      }]},
+        }
+      }
+    },
     footer: context {
       if skippedstate.at(here()) and calc.even(here().page()) { return }
       [
@@ -422,12 +394,12 @@
       equationcounter.update(())
 
       set align(center)
-      sizedheading(it, 字号.三号)
+      sizedheading(it, 字号.小二)
     } else {
       if it.level == 2 {
-        sizedheading(it, 字号.四号)
+        sizedheading(it, 字号.三号)
       } else if it.level == 3 {
-        sizedheading(it, 字号.中四)
+        sizedheading(it, 字号.小三)
       } else {
         sizedheading(it, 字号.小四)
       }
@@ -665,10 +637,12 @@
   }
 
   set align(left + top)
-  // par(justify: true, first-line-indent: 2em, leading: linespacing)[
-  //   #doc
-  // ]
   set par(justify: true, first-line-indent: 2em, leading: linespacing)
+  // set page(numbering: "1")
+  context (
+    partcounter.update(20),
+    counter(page).update(0)
+  )
   doc
 
   smartpagebreak()
@@ -677,7 +651,6 @@
     heading(numbering: none, "致谢")
     acknowledgements
 
-    partcounter.update(30)
     heading(numbering: none, "北京大学学位论文原创性声明和使用授权说明")
     align(center)[#heading(level: 2, numbering: none, outlined: false, "原创性声明")]
     [
