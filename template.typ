@@ -9,6 +9,7 @@
 #let imagecounter = counter(figure.where(kind: image))
 #let tablecounter = counter(figure.where(kind: table))
 #let equationcounter = counter(math.equation)
+// TODO: remove this
 #let appendix() = {
   appendixcounter.update(10)
   chaptercounter.update(0)
@@ -21,7 +22,7 @@
   let actual_loc = if location == none { here() } else { location }
   if appendixcounter.at(actual_loc).first() < 10 {
     if nums.pos().len() == 1 {
-      "第" + chinesenumber(nums.pos().first(), standalone: true) + "章"
+      "第" + str(nums.pos().first()) + "章"
     } else {
       numbering(if brackets { "(1.1)" } else { "1.1" }, ..nums)
     }
@@ -37,13 +38,50 @@
 #let chineseoutline(title: "目录", depth: none, indent: false) = {
   heading(title, numbering: none, outlined: false)
   context {
+    // first in first, reset pagenum
+    counter(page).update(1)
+    set text(font: 字体.宋体, size: 字号.小四)
+    let line(el, indent, maybe_number) = {
+      if indent {
+        h(1em * (el.level - 1 ))
+      }
+
+      if maybe_number != none {
+        context {
+          let width = measure(maybe_number).width
+          box(
+            width: lengthceil(width),
+            link(el.location(), if el.level == 1 {
+              strong(maybe_number)
+            } else {
+              maybe_number
+            })
+          )
+        }
+      }
+
+      link(el.location(), 
+        if el.has("body") { el.body } else {el}
+      )
+
+      // Filler dots
+      box(width: 1fr, h(10pt) + box(width: 1fr, repeat[.]) + h(10pt))
+
+      // Page number
+      let footer = query(selector(<__footer__>).after(el.location()))
+      footer.first()
+
+      linebreak()
+      v(-0.2em)
+    }
     let it = here()
-    let elements = query(heading.where(outlined: true).after(it))
-
+    let abstracts = query(<abstracts>)
+    
+    let elements = query(heading.where(outlined: true))
+    for el in abstracts {
+      line(el, false, none)
+    }
     for el in elements {
-      // Skip list of images and list of tables
-      if partcounter.at(el.location()).first() < 20 and el.numbering == none { continue }
-
       // Skip headings that are too deep
       if depth != none and el.level > depth { continue }
 
@@ -56,61 +94,7 @@
         h(0.5em)
       }
 
-      let line = {
-        if indent {
-          h(1em * (el.level - 1 ))
-        }
-
-        if el.level == 1 {
-          v(0.5em, weak: true)
-        }
-
-        if maybe_number != none {
-          context {
-            let width = measure(maybe_number).width
-            box(
-              width: lengthceil(width),
-              link(el.location(), if el.level == 1 {
-                strong(maybe_number)
-              } else {
-                maybe_number
-              })
-            )
-          }
-        }
-
-        link(el.location(), if el.level == 1 {
-          strong(el.body)
-        } else {
-          el.body
-        })
-
-        // Filler dots
-        if el.level == 1 {
-          box(width: 1fr, h(10pt) + box(width: 1fr) + h(10pt))
-        } else {
-          box(width: 1fr, h(10pt) + box(width: 1fr, repeat[.]) + h(10pt))
-        }
-
-        // Page number
-        let footer = query(selector(<__footer__>).after(el.location()))
-        let page_number = if footer == () {
-          0
-        } else {
-          counter(page).at(footer.first().location()).first()
-        }
-        
-        link(el.location(), if el.level == 1 {
-          strong(str(page_number))
-        } else {
-          str(page_number)
-        })
-
-        linebreak()
-        v(-0.2em)
-      }
-
-      line
+      line(el, indent, maybe_number)
     }
   }
 }
@@ -189,7 +173,7 @@
     content_aligns.push(aligns.at(calc.rem(i, aligns.len())))
   }
 
-  figure(
+  return figure(
     block(
       width: width,
       grid(
@@ -249,6 +233,7 @@
   csupervisor: "李四",
   esupervisor: "Si Li",
   date: "二零二三年六月",
+  cnki: "cnki.pdf",
   cabstract: [],
   ckeywords: (),
   eabstract: [],
@@ -265,6 +250,7 @@
 ) = {
   let smartpagebreak = () => {
     if alwaysstartodd {
+      pagebreak(weak: true)  // workaround for current page no pagenum
       skippedstate.update(true)
       pagebreak(to: "odd", weak: true)
       skippedstate.update(false)
@@ -283,7 +269,6 @@
         // even 才是偶数
         let partpage = here().page() - firstpart + 1
         if calc.even(partpage) or partpage == 1 {
-          artstartedstate.update(true)
           [
             #align(center, cheader)
             #v(-0.8em)
@@ -296,7 +281,7 @@
               #cauthor
               #h(0.5em)
               #ctitle
-              // #v(-0.8em)
+              #v(-0.8em)
               #line(length: 100%)
             ]
           }
@@ -304,22 +289,17 @@
       }
     },
     footer: context {
-      if skippedstate.at(here()) and calc.even(here().page()) { return }
-      [
-        #set text(字号.五号)
+      if skippedstate.get() and calc.even(here().page()) { return }
+      [  // TODO: migrate this part to script mode
+        #set text(字号.五号, font: 字体.宋体, weight: "regular")
         #set align(center)
-        #if query(selector(heading).before(here())).len() < 2 or query(selector(heading).after(here())).len() == 0 {
-          // Skip cover, copyright and origin pages
-        } else {
-          let headers = query(selector(heading).before(here()))
-          let part = partcounter.at(headers.last().location()).first()
-          [
-            #if part < 20 {
-              numbering("I", counter(page).at(here()).first())
-            } else {
-              str(counter(page).at(here()).first())
-            }
-          ]
+        #{
+          let part = partcounter.get().first()
+          if part < 20 {
+            numbering("I", counter(page).at(here()).first())
+          } else {
+            str(counter(page).at(here()).first())
+          }
         }
         #label("__footer__")
       ]
@@ -353,37 +333,20 @@
 
   show strong: it => text(font: 字体.黑体, weight: "semibold", it.body)
   show emph: it => text(font: 字体.楷体, style: "italic", it.body)
-  set par(spacing: linespacing)
   show raw: set text(font: 字体.代码)
 
-  show heading: it => [
+  show heading: it => {
     // Cancel indentation for headings
-    #set par(first-line-indent: 0em)
-
-    #let sizedheading(it, size) = [
-      #set text(size)
-      #v(2em)
-      #if it.numbering != none {
-        strong(counter(heading).display())
-        h(0.5em)
-      }
-      #strong(it.body)
-      #v(1em)
-    ]
-
-    #if it.level == 1 {
-      if not it.body.text in ("Abstract", "学位论文使用授权说明", "版权声明")  {
-        smartpagebreak()
-      }
-      context {
-        if it.body.text == "摘要" {
-          partcounter.update(10)
-          counter(page).update(1)
-        } else if it.numbering != none and partcounter.at(here()).first() < 20 {
-          partcounter.update(20)
-          counter(page).update(1)
+    set par(first-line-indent: 0em)
+    if it.level == 1 {
+      if it.outlined {  // other magic part manually handle them in text flow
+        // smartpagebreak()  // no requirement to use odd-even page in parts. At least in offcial document & template.
+        if (partcounter.get().first() == 20) {
+          pagebreak(weak: true)
         }
       }
+      // manipulation by hard-encoded keywork has been removed
+      // plz find them around the components & manually manaage partState `partcounter` & pagenum `counter(page)`.
       if it.numbering != none {
         chaptercounter.step()
       }
@@ -392,19 +355,23 @@
       tablecounter.update(())
       rawcounter.update(())
       equationcounter.update(())
-
-      set align(center)
-      sizedheading(it, 字号.小二)
-    } else {
-      if it.level == 2 {
-        sizedheading(it, 字号.三号)
-      } else if it.level == 3 {
-        sizedheading(it, 字号.小三)
-      } else {
-        sizedheading(it, 字号.小四)
-      }
     }
-  ]
+    // calculate props
+    let size-list = (字号.小二, 字号.三号, 字号.小三, 字号.小四)  // TODO: split this outside
+    let index = if (it.level >= 1 and it.level <= 4) {it.level - 1} else {3}
+    // set props
+    set block(above: heading-above.at(index), below: heading-below.at(index))
+    set text(size: size-list.at(index))
+    set align(if (index == 0) {center} else {left})
+    // display
+    block[
+      #if it.numbering != none {
+        strong(counter(heading).display())
+        h(0.5em)
+      }
+      #strong(it.body)
+    ]
+  }
 
   show figure: it => [
     #set align(center)
@@ -483,57 +450,27 @@
     }
   }
 
-  let fieldname(name) = [
-    #set align(right + top)
-    #text(name, font: 字体.仿宋)
-  ]
-
-  let fieldvalue(value) = [
-    #set align(center + horizon)
-    #set text(font: 字体.仿宋)
-    #grid(
-      rows: (auto, auto),
-      row-gutter: 0.2em,
-      value,
-      line(length: 100%)
-    )
-  ]
-
   // Cover page
 
   {
-    if blind {
-      set align(center + top)
-      text(字号.初号)[#strong(cheader)]
-      linebreak()
-      set text(字号.三号, font: 字体.仿宋)
-      set par(justify: true, leading: 1em)
-      [（匿名评阅论文封面）]
-      v(2fr)
-      grid(
-        columns: (80pt, 320pt),
-        row-gutter: 1.5em,
-        align(left + top)[中文题目：],
-        align(left + top)[#ctitle],
-        align(left + top)[英文题目：],
-        align(left + top)[#etitle],
-      )
-      v(2em)
-      grid(
-        columns: (80pt, 320pt),
-        row-gutter: 1.5em,
-        align(left + top)[一级学科：],
-        align(left + top)[#cfirstmajor],
-        align(left + top)[二级学科：],
-        align(left + top)[#cmajor],
-        align(left + top)[论文编号：],
-        align(left + top)[#blindid],
-      )
+    set page(footer: none)
+    let fieldname(name) = [
+      #set align(right + top)
+      #text(name, font: 字体.仿宋)
+    ]
 
-      v(4fr)
-      text(字号.小二, font: 字体.仿宋)[#date]
-      v(1fr)
-    } else {
+    let fieldvalue(value) = [
+      #set align(center + horizon)
+      #set text(font: 字体.仿宋)
+      #grid(
+        rows: (auto, auto),
+        row-gutter: 0.2em,
+        value,
+        line(length: 100%)
+      )
+    ]
+
+   {
       image("logo.png")
       text(font: 字体.隶书, size: 字号.小初, cthesisname)
 
@@ -542,7 +479,9 @@
       set text(字号.三号)
 
       grid(
-        columns: (80pt, 280pt),
+        // TODO: edit line width as module
+        // columns: (80pt, 280pt),
+        columns: (80pt, 300pt),
         row-gutter: 1em,
         fieldname(text("题") + h(2em) + text("目：")),
         fieldvalue(ctitle),
@@ -554,155 +493,189 @@
         fieldvalue(school),
         fieldname(text("专") + h(2em) + text("业：")),
         fieldvalue(cmajor),
-        fieldname(text("学") + h(2em) + text("号：")),
-        fieldvalue(studentid),
         fieldname([班#h(2em)级：]),
         fieldvalue(clazz),
+        fieldname(text("学") + h(2em) + text("号：")),
+        fieldvalue(studentid),
       )
       v(字号.五号)
       text(font:字体.隶书)[福建理工大学教务处 制]
       place(
         image("cover.png", height: 7.35cm, width: 22cm),
         dx: -3cm,
-        dy: -0.41cm,
+        dy: -1.41cm,
       )
     }
 
   }
+  // 如果你不在计算机系，可能需要用下面这个参数，一切以实物为准真是笑yue了
+  // set page(margin: (bottom: 2cm, right: 2cm))
+  // TODO: as doc() arg
+  set page(margin: (x: 3.17cm, y: 2.54cm))
   smartpagebreak()
 
-  // Copyright
+  // TODO: move this part before cover
   set align(left + top)
-  set text(字号.小四)
-  heading(numbering: none, outlined: false, "版权声明")
-  par(justify: true, first-line-indent: 2em, leading: linespacing)[
-    任何收存和保管本论文各种版本的单位和个人，未经本论文作者同意，不得将本论文转借他人，亦不得随意复制、抄录、拍照或以任何方式传播。否则，引起有碍作者著作权之问题，将可能承担法律责任。
-  ]
+  set text(font: 字体.宋体, 字号.小四)
+  set par(justify: true, first-line-indent: (amount: 2em, all: true), leading: par-spacing(linespacing), spacing: par-spacing(linespacing))
 
+
+  import "@preview/muchpdf:0.1.1": *
+  let cnkipdf = read("cnki.pdf", encoding: none)
+  if (cnkipdf.len() >= 0) {
+    set page(footer: none, margin: 0pt)
+    muchpdf(cnkipdf)
+  } else {
+    // cnki
+    counter(page).update(1)
+    {
+      if not blind {
+        set par(leading: par-spacing(25pt), spacing: par-spacing(25pt))
+        set text(font: "DengXian", size: 字号.四号)
+        set align(center)
+
+        v(字号.三号*2.5)
+        {
+          set par(leading: 1.25em, spacing: 1.25em)
+          [
+            #strong[
+              #align(center)[
+                #text(size: 字号.三号)[
+                  福建理工大学本科毕业设计（论文）作者承诺保证书
+                ]
+              ]
+            ]
+          ]
+          {
+            "本人郑重承诺：";
+            "本篇毕业设计（论文）的内容真实、可靠。";
+            "如果存在弄虚作假、抄袭的情况，本人愿承担全部责任。";
+          } 
+        }
+        v(5em)
+        {
+          set par(first-line-indent: 17em)  // 👍
+          set align(left)
+          v(1em)
+          par[学生签名：]
+          v(1em)
+          par[#h(2em)年 #h(1em) 月 #h(1em) 日]
+          v(1em)
+        }
+        
+        v(2em)
+        
+        [
+          #strong[
+            #align(center)[
+              #text(size: 字号.三号)[
+                福建理工大学本科毕业设计（论文）指导教师承诺保证书
+              ]
+            ]
+          ]
+        ]
+        v(3em)
+        align(left)[本人郑重承诺：我已按有关规定对本篇毕业设计(论文)的选题与内容进行了指导和审核，且提交的毕业设计（论文）终稿与上传至“大学生论文管理系统”检测的电子文档相吻合，未发现弄虚作假、抄袭的现象，本人愿承担指导教师的相关责任。]
+        v(8em)  // FIXME: looks similar
+        {
+          set par(first-line-indent: 17em)
+          set align(left)
+          v(1em)
+          par[指导教师签名：]
+          v(1em)
+          par[#h(2em)年 #h(1em) 月 #h(1em) 日]
+        }
+      }
+    }
+  }
   smartpagebreak()
 
+  // FIXME: Abstract & 中文摘要 spacing
   // Chinese abstract
-  set par(justify: true, first-line-indent: 2em, leading: linespacing)
-  heading(numbering: none, outlined: false, "摘要")
-  cabstract
-  v(1fr)
-  set par(first-line-indent: 0em)
-  text[*关键词：*]
-  ckeywords.join("，")
-  v(2em)
-  set par(first-line-indent: 2em)
-  
+  counter(page).update(1)
+  {
+    {
+      set align(center)
+      set text(font: 字体.黑体)
 
-  smartpagebreak()
+      [
+        #par(spacing: par-spacing(30pt))[
+          #text(size: 字号.小二)[
+            #ctitle
+          ]
+        ]
+        #par(spacing: par-spacing(24pt))[
+          #text(size: 字号.四号)[中文摘要]<abstracts>
+        ]
+      ]
+    }
+    cabstract
+    {
+      set par(first-line-indent: 0em, leading: par-spacing(16pt), spacing: par-spacing(16pt))
+      text[*关键词：*]
+      ckeywords.join("；")
+    }
+
+  }
+  pagebreak(weak: true)
 
   // English abstract
-  [
-    #set text(字号.小二)
-    #set align(center)
-    #strong(etitle)
-  ]
-  if not blind {
-    [
-      #set align(center)
-      #eauthor \(#emajor\) \
-      Directed by #esupervisor
-    ]
+  // not required to reset pagenum
+  {
+    set text(font: "Arial", weight: "black")
+    {
+      set align(center)
+      set par(spacing: par-spacing(24pt), leading: par-spacing(24pt))
+      par(text(etitle, size: 字号.小三))
+      par[#text("Abstract", size: 字号.四号)<abstracts>]
+    }
+    set par(spacing: par-spacing(16pt), leading: par-spacing(16pt))
+    set text(size: 字号.小四)
+    text(eabstract, font: 字体.宋体, weight: "regular")
+
+    set par(first-line-indent: 0em)
+    [*KEYWORDS:*]
+    h(0.5em, weak: true)
+    ekeywords.join(", ")
   }
-  heading(numbering: none, outlined: false, "Abstract")
-  eabstract
-  v(1fr)
-  set par(first-line-indent: 0em)
-  [*KEYWORDS:*]
-  h(0.5em, weak: true)
-  ekeywords.join(", ")
-  v(2em)
-  
+
   // Table of contents
+  // pagenum is reset in component
+  // TODO: move out smartpagebreak() util
+  smartpagebreak()
   chineseoutline(
-    title: "目录",
+    title: [目#h(2em)录],
     depth: outlinedepth,
     indent: true,
   )
 
-  if listofimage {
-    listoffigures()
+  // TODO: unused, remove these
+  {
+    if listofimage {
+      listoffigures()
+    }
+
+    if listoftable {
+      listoffigures(title: "表格", kind: table)
+    }
+
+    if listofcode {
+      listoffigures(title: "代码", kind: "code")
+    }
   }
 
-  if listoftable {
-    listoffigures(title: "表格", kind: table)
-  }
-
-  if listofcode {
-    listoffigures(title: "代码", kind: "code")
-  }
-
+  // the article.
+  smartpagebreak()
+  counter(page).update(1)
+  partcounter.update(20)
   set align(left + top)
-  set par(justify: true, first-line-indent: 2em, leading: linespacing)
-  // set page(numbering: "1")
-  context (
-    partcounter.update(20),
-    counter(page).update(0)
-  )
   doc
 
-  smartpagebreak()
-
-  if not blind {
-    heading(numbering: none, "致谢")
-    acknowledgements
-
-    heading(numbering: none, "北京大学学位论文原创性声明和使用授权说明")
-    align(center)[#heading(level: 2, numbering: none, outlined: false, "原创性声明")]
-    [
-      本人郑重声明：
-      所呈交的学位论文，是本人在导师的指导下，独立进行研究工作所取得的成果。
-      除文中已经注明引用的内容外，
-      本论文不含任何其他个人或集体已经发表或撰写过的作品或成果。
-      对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式标明。
-      本声明的法律结果由本人承担。
-
-      #v(1em)
-
-      #align(right)[
-        论文作者签名
-        #h(5em)
-        日期：
-        #h(2em)
-        年
-        #h(2em)
-        月
-        #h(2em)
-        日
-      ]
-
-      #align(center)[#heading(level: 2, numbering: none, outlined: false, "学位论文使用授权说明")]
-      #v(-0.33em, weak: true)
-      #align(center)[#text(字号.五号)[（必须装订在提交学校图书馆的印刷本）]]
-      #v(字号.小三)
-
-      本人完全了解北京大学关于收集、保存、使用学位论文的规定，即：
-
-      - 按照学校要求提交学位论文的印刷本和电子版本；
-      - 学校有权保存学位论文的印刷本和电子版，并提供目录检索与阅览服务，在校园网上提供服务；
-      - 学校可以采用影印、缩印、数字化或其它复制手段保存论文；
-      - 因某种特殊原因须要延迟发布学位论文电子版，授权学校 #box[#rect(width: 9pt, height: 9pt)] 一年 /	 #box[#rect(width: 9pt, height: 9pt)] 两年 / #box[#rect(width: 9pt, height: 9pt)] 三年以后，在校园网上全文发布。
-
-      #align(center)[（保密论文在解密后遵守此规定）]
-
-      #v(1em)
-      #align(right)[
-        论文作者签名
-        #h(5em)
-        导师签名
-        #h(5em)
-        日期：
-        #h(2em)
-        年
-        #h(2em)
-        月
-        #h(2em)
-        日
-      ]
-    ]
+  // acknow
+  {
+    if not blind {
+      heading(numbering: none, "致谢")
+      acknowledgements
+    }
   }
 }

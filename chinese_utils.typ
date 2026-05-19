@@ -104,3 +104,14 @@
     ret.join()
   }
 }
+
+// thx hit thesis
+// TODO: type annotation
+#let par-spacing(spacing) = {
+  let par-spacing-multiplier = 1.25
+  let leading = par-spacing-multiplier * spacing - 1em
+  leading
+}
+
+#let heading-above = (1.4em, 1.5em, 1.56em, 0.95em, )
+#let heading-below = (1.7em, 1.51em, 1.58em, 0.94em, )
