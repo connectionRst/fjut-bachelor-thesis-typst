@@ -236,7 +236,7 @@
   eauthor: "San Zhang",
   studentid: "23000xxxxx",
   blindid: "L2023XXXXX",
-  cthesisname: "博士研究生学位论文",
+  cthesisname: "毕业设计（论文）",
   cheader: "北京大学博士学位论文",
   ctitle: "北京大学学位论文 Typst 模板",
   etitle: "Typst Template for Peking University Dissertations",
@@ -244,7 +244,7 @@
   cfirstmajor: "某个一级学科",
   cmajor: "某个专业",
   emajor: "Some Major",
-  direction: "某个研究方向",
+  clazz: "某个班级",
   csupervisor: "李四",
   esupervisor: "Si Li",
   date: "二零二三年六月",
@@ -253,7 +253,7 @@
   eabstract: [],
   ekeywords: (),
   acknowledgements: [],
-  linespacing: 1em,
+  linespacing: 20pt,
   outlinedepth: 3,
   blind: false,
   listofimage: true,
@@ -511,105 +511,68 @@
     }
   }
 
-  let fieldname(name) = [
-    #set align(right + top)
-    #strong(name)
-  ]
-
-  let fieldvalue(value) = [
-    #set align(center + horizon)
-    #set text(font: 字体.仿宋)
-    #grid(
-      rows: (auto, auto),
-      row-gutter: 0.2em,
-      value,
-      line(length: 100%)
-    )
-  ]
-
   // Cover page
 
-  if blind {
-    set align(center + top)
-    text(字号.初号)[#strong(cheader)]
-    linebreak()
-    set text(字号.三号, font: 字体.仿宋)
-    set par(justify: true, leading: 1em)
-    [（匿名评阅论文封面）]
-    v(2fr)
-    grid(
-      columns: (80pt, 320pt),
-      row-gutter: 1.5em,
-      align(left + top)[中文题目：],
-      align(left + top)[#ctitle],
-      align(left + top)[英文题目：],
-      align(left + top)[#etitle],
-    )
-    v(2em)
-    grid(
-      columns: (80pt, 320pt),
-      row-gutter: 1.5em,
-      align(left + top)[一级学科：],
-      align(left + top)[#cfirstmajor],
-      align(left + top)[二级学科：],
-      align(left + top)[#cmajor],
-      align(left + top)[论文编号：],
-      align(left + top)[#blindid],
-    )
+  {
+    set page(footer: none)
+    let fieldname(name) = [
+      #set align(right + top)
+      #text(name, font: 字体.仿宋)
+    ]
 
-    v(4fr)
-    text(字号.小二, font: 字体.仿宋)[#date]
-    v(1fr)
-  } else {
-    box(
-      grid(
-        columns: (auto, auto),
-        gutter: 0.4em,
-        image("pkulogo.svg", height: 2.4em, fit: "contain"),
-        image("pkuword.svg", height: 1.6em, fit: "contain")
+    let fieldvalue(value) = [
+      #set align(center + horizon)
+      #set text(font: 字体.仿宋)
+      #grid(
+        rows: (auto, auto),
+        row-gutter: 0.2em,
+        value,
+        line(length: 100%)
       )
-    )
-    linebreak()
-    strong(cthesisname)
+    ]
 
-    set text(字号.二号)
-    v(60pt)
-    grid(
-      columns: (80pt, 300pt),
-      [
-        #set align(right + top)
-        题目：
-      ],
-      [
-        #set align(center + horizon)
-        #chineseunderline(ctitle, width: 300pt, bold: true)
-      ]
-    )
+   {
+      image("logo.png")
+      text(font: 字体.隶书, size: 字号.小初, cthesisname)
 
-    v(60pt)
-    set text(字号.三号)
+      set text(字号.二号)
+      v(5em)
+      set text(字号.三号)
 
-    grid(
-      columns: (80pt, 280pt),
-      row-gutter: 1em,
-      fieldname(text("姓") + h(2em) + text("名：")),
-      fieldvalue(cauthor),
-      fieldname(text("学") + h(2em) + text("号：")),
-      fieldvalue(studentid),
-      fieldname(text("学") + h(2em) + text("院：")),
-      fieldvalue(school),
-      fieldname(text("专") + h(2em) + text("业：")),
-      fieldvalue(cmajor),
-      fieldname("研究方向："),
-      fieldvalue(direction),
-      fieldname(text("导") + h(2em) + text("师：")),
-      fieldvalue(csupervisor),
-    )
+      grid(
+        // TODO: edit line width as module
+        // columns: (80pt, 280pt),
+        columns: (80pt, 300pt),
+        row-gutter: 1em,
+        fieldname(text("题") + h(2em) + text("目：")),
+        fieldvalue(ctitle),
+        fieldname(text("学") + h(2em) + text("生：")),
+        fieldvalue(cauthor),
+        fieldname(text("指导老师：")),
+        fieldvalue(csupervisor),
+        fieldname(text("学") + h(2em) + text("院：")),
+        fieldvalue(school),
+        fieldname(text("专") + h(2em) + text("业：")),
+        fieldvalue(cmajor),
+        fieldname([班#h(2em)级：]),
+        fieldvalue(clazz),
+        fieldname(text("学") + h(2em) + text("号：")),
+        fieldvalue(studentid),
+      )
+      v(字号.五号)
+      text(font:字体.隶书)[福建理工大学教务处 制]
+      place(
+        image("cover.png", height: 7.35cm, width: 22cm),
+        dx: -3cm,
+        dy: -1.41cm,
+      )
+    }
 
-    v(60pt)
-    text(字号.小二)[#date]
   }
-
+  // 如果你不在计算机系，可能需要用下面这个参数，一切以实物为准真是笑yue了
+  // set page(margin: (bottom: 2cm, right: 2cm))
+  // TODO: as doc() arg
+  set page(margin: (x: 3.17cm, y: 2.54cm))
   smartpagebreak()
 
   // Copyright
