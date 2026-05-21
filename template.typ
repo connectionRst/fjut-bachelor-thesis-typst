@@ -233,6 +233,7 @@
   csupervisor: "李四",
   esupervisor: "Si Li",
   date: "二零二三年六月",
+  cnki: "cnki.pdf",
   cabstract: [],
   ckeywords: (),
   eabstract: [],
@@ -513,20 +514,81 @@
   set page(margin: (x: 3.17cm, y: 2.54cm))
   smartpagebreak()
 
-  // Copyright
-  set align(left + top)
-  set text(字号.小四)
-  heading(numbering: none, outlined: false, "版权声明")
-  par(justify: true, first-line-indent: 2em, leading: linespacing)[
-    任何收存和保管本论文各种版本的单位和个人，未经本论文作者同意，不得将本论文转借他人，亦不得随意复制、抄录、拍照或以任何方式传播。否则，引起有碍作者著作权之问题，将可能承担法律责任。
-  ]
-
-  smartpagebreak()
-  // smartpagebreak()  // FIXME: I forget this extra pagebreak is necessary or not, uncomment me if not working properly.
-
+  // TODO: move this part before cover
   set align(left + top)
   set text(font: 字体.宋体, 字号.小四)
   set par(justify: true, first-line-indent: (amount: 2em, all: true), leading: par-spacing(linespacing), spacing: par-spacing(linespacing))
+
+
+  import "@preview/muchpdf:0.1.1": *
+  let cnkipdf = read("cnki.pdf", encoding: none)
+  if (cnkipdf.len() >= 0) {
+    set page(footer: none, margin: 0pt)
+    muchpdf(cnkipdf)
+  } else {
+    // cnki
+    counter(page).update(1)
+    {
+      if not blind {
+        set par(leading: par-spacing(25pt), spacing: par-spacing(25pt))
+        set text(font: "DengXian", size: 字号.四号)
+        set align(center)
+
+        v(字号.三号*2.5)
+        {
+          set par(leading: 1.25em, spacing: 1.25em)
+          [
+            #strong[
+              #align(center)[
+                #text(size: 字号.三号)[
+                  福建理工大学本科毕业设计（论文）作者承诺保证书
+                ]
+              ]
+            ]
+          ]
+          {
+            "本人郑重承诺：";
+            "本篇毕业设计（论文）的内容真实、可靠。";
+            "如果存在弄虚作假、抄袭的情况，本人愿承担全部责任。";
+          } 
+        }
+        v(5em)
+        {
+          set par(first-line-indent: 17em)  // 👍
+          set align(left)
+          v(1em)
+          par[学生签名：]
+          v(1em)
+          par[#h(2em)年 #h(1em) 月 #h(1em) 日]
+          v(1em)
+        }
+        
+        v(2em)
+        
+        [
+          #strong[
+            #align(center)[
+              #text(size: 字号.三号)[
+                福建理工大学本科毕业设计（论文）指导教师承诺保证书
+              ]
+            ]
+          ]
+        ]
+        v(3em)
+        align(left)[本人郑重承诺：我已按有关规定对本篇毕业设计(论文)的选题与内容进行了指导和审核，且提交的毕业设计（论文）终稿与上传至“大学生论文管理系统”检测的电子文档相吻合，未发现弄虚作假、抄袭的现象，本人愿承担指导教师的相关责任。]
+        v(8em)  // FIXME: looks similar
+        {
+          set par(first-line-indent: 17em)
+          set align(left)
+          v(1em)
+          par[指导教师签名：]
+          v(1em)
+          par[#h(2em)年 #h(1em) 月 #h(1em) 日]
+        }
+      }
+    }
+  }
+  smartpagebreak()
 
   // FIXME: Abstract & 中文摘要 spacing
   // Chinese abstract
@@ -609,65 +671,11 @@
   set align(left + top)
   doc
 
-  smartpagebreak()
-
-  if not blind {
-    heading(numbering: none, "致谢")
-    acknowledgements
-
-    partcounter.update(30)
-    heading(numbering: none, "北京大学学位论文原创性声明和使用授权说明")
-    align(center)[#heading(level: 2, numbering: none, outlined: false, "原创性声明")]
-    [
-      本人郑重声明：
-      所呈交的学位论文，是本人在导师的指导下，独立进行研究工作所取得的成果。
-      除文中已经注明引用的内容外，
-      本论文不含任何其他个人或集体已经发表或撰写过的作品或成果。
-      对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式标明。
-      本声明的法律结果由本人承担。
-
-      #v(1em)
-
-      #align(right)[
-        论文作者签名
-        #h(5em)
-        日期：
-        #h(2em)
-        年
-        #h(2em)
-        月
-        #h(2em)
-        日
-      ]
-
-      #align(center)[#heading(level: 2, numbering: none, outlined: false, "学位论文使用授权说明")]
-      #v(-0.33em, weak: true)
-      #align(center)[#text(字号.五号)[（必须装订在提交学校图书馆的印刷本）]]
-      #v(字号.小三)
-
-      本人完全了解北京大学关于收集、保存、使用学位论文的规定，即：
-
-      - 按照学校要求提交学位论文的印刷本和电子版本；
-      - 学校有权保存学位论文的印刷本和电子版，并提供目录检索与阅览服务，在校园网上提供服务；
-      - 学校可以采用影印、缩印、数字化或其它复制手段保存论文；
-      - 因某种特殊原因须要延迟发布学位论文电子版，授权学校 #box[#rect(width: 9pt, height: 9pt)] 一年 /	 #box[#rect(width: 9pt, height: 9pt)] 两年 / #box[#rect(width: 9pt, height: 9pt)] 三年以后，在校园网上全文发布。
-
-      #align(center)[（保密论文在解密后遵守此规定）]
-
-      #v(1em)
-      #align(right)[
-        论文作者签名
-        #h(5em)
-        导师签名
-        #h(5em)
-        日期：
-        #h(2em)
-        年
-        #h(2em)
-        月
-        #h(2em)
-        日
-      ]
-    ]
+  // acknow
+  {
+    if not blind {
+      heading(numbering: none, "致谢")
+      acknowledgements
+    }
   }
 }
