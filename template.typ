@@ -9,6 +9,7 @@
 #let imagecounter = counter(figure.where(kind: image))
 #let tablecounter = counter(figure.where(kind: table))
 #let equationcounter = counter(math.equation)
+// TODO: remove this
 #let appendix() = {
   appendixcounter.update(10)
   chaptercounter.update(0)
@@ -21,7 +22,7 @@
   let actual_loc = if location == none { here() } else { location }
   if appendixcounter.at(actual_loc).first() < 10 {
     if nums.pos().len() == 1 {
-      "第" + chinesenumber(nums.pos().first(), standalone: true) + "章"
+      "第" + str(nums.pos().first()) + "章"
     } else {
       numbering(if brackets { "(1.1)" } else { "1.1" }, ..nums)
     }
@@ -37,13 +38,50 @@
 #let chineseoutline(title: "目录", depth: none, indent: false) = {
   heading(title, numbering: none, outlined: false)
   context {
+    // first in first, reset pagenum
+    counter(page).update(1)
+    set text(font: 字体.宋体, size: 字号.小四)
+    let line(el, indent, maybe_number) = {
+      if indent {
+        h(1em * (el.level - 1 ))
+      }
+
+      if maybe_number != none {
+        context {
+          let width = measure(maybe_number).width
+          box(
+            width: lengthceil(width),
+            link(el.location(), if el.level == 1 {
+              strong(maybe_number)
+            } else {
+              maybe_number
+            })
+          )
+        }
+      }
+
+      link(el.location(), 
+        if el.has("body") { el.body } else {el}
+      )
+
+      // Filler dots
+      box(width: 1fr, h(10pt) + box(width: 1fr, repeat[.]) + h(10pt))
+
+      // Page number
+      let footer = query(selector(<__footer__>).after(el.location()))
+      footer.first()
+
+      linebreak()
+      v(-0.2em)
+    }
     let it = here()
-    let elements = query(heading.where(outlined: true).after(it))
-
+    let abstracts = query(<abstracts>)
+    
+    let elements = query(heading.where(outlined: true))
+    for el in abstracts {
+      line(el, false, none)
+    }
     for el in elements {
-      // Skip list of images and list of tables
-      if partcounter.at(el.location()).first() < 20 and el.numbering == none { continue }
-
       // Skip headings that are too deep
       if depth != none and el.level > depth { continue }
 
@@ -56,61 +94,7 @@
         h(0.5em)
       }
 
-      let line = {
-        if indent {
-          h(1em * (el.level - 1 ))
-        }
-
-        if el.level == 1 {
-          v(0.5em, weak: true)
-        }
-
-        if maybe_number != none {
-          context {
-            let width = measure(maybe_number).width
-            box(
-              width: lengthceil(width),
-              link(el.location(), if el.level == 1 {
-                strong(maybe_number)
-              } else {
-                maybe_number
-              })
-            )
-          }
-        }
-
-        link(el.location(), if el.level == 1 {
-          strong(el.body)
-        } else {
-          el.body
-        })
-
-        // Filler dots
-        if el.level == 1 {
-          box(width: 1fr, h(10pt) + box(width: 1fr) + h(10pt))
-        } else {
-          box(width: 1fr, h(10pt) + box(width: 1fr, repeat[.]) + h(10pt))
-        }
-
-        // Page number
-        let footer = query(selector(<__footer__>).after(el.location()))
-        let page_number = if footer == () {
-          0
-        } else {
-          counter(page).at(footer.first().location()).first()
-        }
-        
-        link(el.location(), if el.level == 1 {
-          strong(str(page_number))
-        } else {
-          str(page_number)
-        })
-
-        linebreak()
-        v(-0.2em)
-      }
-
-      line
+      line(el, indent, maybe_number)
     }
   }
 }
@@ -189,7 +173,7 @@
     content_aligns.push(aligns.at(calc.rem(i, aligns.len())))
   }
 
-  figure(
+  return figure(
     block(
       width: width,
       grid(
@@ -348,37 +332,20 @@
 
   show strong: it => text(font: 字体.黑体, weight: "semibold", it.body)
   show emph: it => text(font: 字体.楷体, style: "italic", it.body)
-  set par(spacing: linespacing)
   show raw: set text(font: 字体.代码)
 
-  show heading: it => [
+  show heading: it => {
     // Cancel indentation for headings
-    #set par(first-line-indent: 0em)
-
-    #let sizedheading(it, size) = [
-      #set text(size)
-      #v(2em)
-      #if it.numbering != none {
-        strong(counter(heading).display())
-        h(0.5em)
-      }
-      #strong(it.body)
-      #v(1em)
-    ]
-
-    #if it.level == 1 {
-      if not it.body.text in ("Abstract", "学位论文使用授权说明", "版权声明")  {
-        smartpagebreak()
-      }
-      context {
-        if it.body.text == "摘要" {
-          partcounter.update(10)
-          counter(page).update(1)
-        } else if it.numbering != none and partcounter.at(here()).first() < 20 {
-          partcounter.update(20)
-          counter(page).update(1)
+    set par(first-line-indent: 0em)
+    if it.level == 1 {
+      if it.outlined {  // other magic part manually handle them in text flow
+        // smartpagebreak()  // no requirement to use odd-even page in parts. At least in offcial document & template.
+        if (partcounter.get().first() == 20) {
+          pagebreak(weak: true)
         }
       }
+      // manipulation by hard-encoded keywork has been removed
+      // plz find them around the components & manually manaage partState `partcounter` & pagenum `counter(page)`.
       if it.numbering != none {
         chaptercounter.step()
       }
@@ -387,19 +354,23 @@
       tablecounter.update(())
       rawcounter.update(())
       equationcounter.update(())
-
-      set align(center)
-      sizedheading(it, 字号.小二)
-    } else {
-      if it.level == 2 {
-        sizedheading(it, 字号.三号)
-      } else if it.level == 3 {
-        sizedheading(it, 字号.小三)
-      } else {
-        sizedheading(it, 字号.小四)
-      }
     }
-  ]
+    // calculate props
+    let size-list = (字号.小二, 字号.三号, 字号.小三, 字号.小四)  // TODO: split this outside
+    let index = if (it.level >= 1 and it.level <= 4) {it.level - 1} else {3}
+    // set props
+    set block(above: heading-above.at(index), below: heading-below.at(index))
+    set text(size: size-list.at(index))
+    set align(if (index == 0) {center} else {left})
+    // display
+    block[
+      #if it.numbering != none {
+        strong(counter(heading).display())
+        h(0.5em)
+      }
+      #strong(it.body)
+    ]
+  }
 
   show figure: it => [
     #set align(center)
@@ -551,72 +522,91 @@
   ]
 
   smartpagebreak()
+  // smartpagebreak()  // FIXME: I forget this extra pagebreak is necessary or not, uncomment me if not working properly.
 
+  set align(left + top)
+  set text(font: 字体.宋体, 字号.小四)
+  set par(justify: true, first-line-indent: (amount: 2em, all: true), leading: par-spacing(linespacing), spacing: par-spacing(linespacing))
+
+  // FIXME: Abstract & 中文摘要 spacing
   // Chinese abstract
-  set par(justify: true, first-line-indent: 2em, leading: linespacing)
-  heading(numbering: none, outlined: false, "摘要")
-  cabstract
-  v(1fr)
-  set par(first-line-indent: 0em)
-  text[*关键词：*]
-  ckeywords.join("，")
-  v(2em)
-  set par(first-line-indent: 2em)
-  
+  counter(page).update(1)
+  {
+    {
+      set align(center)
+      set text(font: 字体.黑体)
 
-  smartpagebreak()
+      [
+        #par(spacing: par-spacing(30pt))[
+          #text(size: 字号.小二)[
+            #ctitle
+          ]
+        ]
+        #par(spacing: par-spacing(24pt))[
+          #text(size: 字号.四号)[中文摘要]<abstracts>
+        ]
+      ]
+    }
+    cabstract
+    {
+      set par(first-line-indent: 0em, leading: par-spacing(16pt), spacing: par-spacing(16pt))
+      text[*关键词：*]
+      ckeywords.join("；")
+    }
+
+  }
+  pagebreak(weak: true)
 
   // English abstract
-  [
-    #set text(字号.小二)
-    #set align(center)
-    #strong(etitle)
-  ]
-  if not blind {
-    [
-      #set align(center)
-      #eauthor \(#emajor\) \
-      Directed by #esupervisor
-    ]
+  // not required to reset pagenum
+  {
+    set text(font: "Arial", weight: "black")
+    {
+      set align(center)
+      set par(spacing: par-spacing(24pt), leading: par-spacing(24pt))
+      par(text(etitle, size: 字号.小三))
+      par[#text("Abstract", size: 字号.四号)<abstracts>]
+    }
+    set par(spacing: par-spacing(16pt), leading: par-spacing(16pt))
+    set text(size: 字号.小四)
+    text(eabstract, font: 字体.宋体, weight: "regular")
+
+    set par(first-line-indent: 0em)
+    [*KEYWORDS:*]
+    h(0.5em, weak: true)
+    ekeywords.join(", ")
   }
-  heading(numbering: none, outlined: false, "Abstract")
-  eabstract
-  v(1fr)
-  set par(first-line-indent: 0em)
-  [*KEYWORDS:*]
-  h(0.5em, weak: true)
-  ekeywords.join(", ")
-  v(2em)
-  
+
   // Table of contents
+  // pagenum is reset in component
+  // TODO: move out smartpagebreak() util
+  smartpagebreak()
   chineseoutline(
-    title: "目录",
+    title: [目#h(2em)录],
     depth: outlinedepth,
     indent: true,
   )
 
-  if listofimage {
-    listoffigures()
+  // TODO: unused, remove these
+  {
+    if listofimage {
+      listoffigures()
+    }
+
+    if listoftable {
+      listoffigures(title: "表格", kind: table)
+    }
+
+    if listofcode {
+      listoffigures(title: "代码", kind: "code")
+    }
   }
 
-  if listoftable {
-    listoffigures(title: "表格", kind: table)
-  }
-
-  if listofcode {
-    listoffigures(title: "代码", kind: "code")
-  }
-
+  // the article.
+  smartpagebreak()
+  counter(page).update(1)
+  partcounter.update(20)
   set align(left + top)
-  // par(justify: true, first-line-indent: 2em, leading: linespacing)[
-  //   #doc
-  // ]
-  set par(justify: true, first-line-indent: 2em, leading: linespacing)
-  // set page(numbering: "1")
-  context (
-    partcounter.update(20),
-    counter(page).update(0)
-  )
   doc
 
   smartpagebreak()
